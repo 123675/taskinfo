@@ -22,7 +22,7 @@ def compute_sinkhorn(m, r=None, c=None, regularization=100., iterations=40):
     K = torch.exp(-regularization * m)
 
     # Main loop
-    for i in xrange(iterations):
+    for i in range(iterations):
         # Kdiag(v)_ij = sum_k K_ik diag(v)_kj = K_ij v_j
         # Pij = u_i K_ij v_j
         # sum_j Pij = u_i sum_j K_ij v_j = u_i (Kv)_i = r_i
@@ -75,7 +75,7 @@ def compute_sinkhorn_stable(m, r=None, c=None, log_v=None, regularization=100., 
     log_K = -regularization * m
 
     # Main loop
-    for i in xrange(iterations):
+    for i in range(iterations):
         # Match r marginals
         log_u = log_r - log_sum_exp(log_K + log_v[None, :], dim=1)
 
@@ -114,7 +114,7 @@ def cluster_wasserstein_flat(X, n_components, regularization=100., iterations=20
     assert len(X.size()) == 2, 'Please flatten input to cluster_wasserstein'
     centroids = 0.01 * torch.randn((n_components, X.size()[1])).to(X.device)  # should be fine in most cases
     log_v = None
-    for iteration in xrange(iterations):
+    for iteration in range(iterations):
 
         distances = get_pairwise_distances(X, centroids)
         # Expectation - Compute Sinkhorn distance
@@ -172,7 +172,7 @@ def cluster_kmeans_flat(X, n_components, iterations=20, kmeansplusplus=False, ep
     else:  # follow k-means++ initialization scheme
         initial_idx = np.random.randint(len(X))
         centroids_list = []
-        for i in xrange(n_components):
+        for i in range(n_components):
             if i == 0:
                 new_idx = np.random.randint(len(X))
             else:
@@ -187,7 +187,7 @@ def cluster_kmeans_flat(X, n_components, iterations=20, kmeansplusplus=False, ep
 
     assignment_matrix = torch.zeros((len(X), n_components)).to(X.device)
     rows = range(len(X))
-    for iteration in xrange(iterations):
+    for iteration in range(iterations):
 
         # Get  pairwise distances
         distances = get_pairwise_distances(X, centroids)

@@ -85,7 +85,7 @@ class OmniglotCCNLoader(object):
 
     def __iter__(self):
 
-        for i in xrange(self.n_batch):
+        for i in range(self.n_batch):
             # Sample an alphabet
             alphabet = self.omniglot._alphabets[np.random.randint(len(self.omniglot._alphabets))]
             # Get tensor of all characters
