@@ -44,7 +44,7 @@ class Summary(object):
         for log in sorted_logs:
             tail = sorted_logs[log]
             tail = tail[-min(len(tail), n_avg):]
-            val = dict(tail).values()
+            val = list(dict(tail).values())
             if (exclude is None or exclude not in log) and '_reg' not in log:
                 print('\t{}: {:.4f} +/- {:.4f}'.format(log, np.mean(val), np.std(val)))
 
@@ -54,7 +54,7 @@ class Summary(object):
         sorted_logs = self.sorted()
         for log in sorted_logs:
             tail = sorted_logs[log]
-            val = dict(tail).values()
+            val = list(dict(tail).values())
             if (exclude is None or exclude not in log) and '_reg' not in log:
                 mean = np.mean(val)
                 std = np.std(val)
@@ -222,7 +222,7 @@ def main(opt):
         # Sample from training
         with Timer() as train_load_timer:
 
-            sample_train, new_epoch = train_iter.next()
+            sample_train, new_epoch = next(train_iter)
             # For debug
             #plt.imshow(0.5 + 0.5 * np.rollaxis(sample_train['xs'].numpy(), 2, 5)[0].reshape((5 * 84, 84, 3)))
 
@@ -322,7 +322,7 @@ def main(opt):
 
                 with Timer() as val_load_timer:
 
-                    sample_val, __ = subset_iter.next()
+                    sample_val, __ = next(subset_iter)
 
                 with Timer() as val_eval_timer:
 
@@ -422,10 +422,10 @@ def main(opt):
         #### Save log
         if iteration % 500 == 0 or iteration < 10 or (iteration % 100 == 0 and opt['train_loss'] == 'evalonly'):
             try:
-                with open(os.path.join(opt['log.exp_dir'], 'log.json'), 'wb') as fp:
+                with open(os.path.join(opt['log.exp_dir'], 'log.json'), 'w', encoding="utf8") as fp:
                     json.dump(summary.logs, fp)
                 # Dumpy full summary as well, although this mostly makes sense in evalonly mode
-                with open(os.path.join(opt['log.exp_dir'], 'summary.txt'), 'wb') as fp:
+                with open(os.path.join(opt['log.exp_dir'], 'summary.txt'), 'w') as fp:
                     fp.write('Iteration {}/{}\n'.format(iteration, opt['iterations']))
                     fp.write(summary.get_full_summary())
             except Exception as e:
