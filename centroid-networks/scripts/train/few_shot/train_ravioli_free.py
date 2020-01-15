@@ -389,13 +389,13 @@ def main(opt):
             if opt['rawinput'] or opt['train_loss'] == 'evalonly':
                 print('No model to save in raw_input mode')
             else:
-                print 'Saving current model')
+                print('Saving current model')
                 model.cpu()
 
                 torch.save(model, os.path.join(opt['log.exp_dir'], 'current_model.pt'))
 
                 if iteration % 2000 == 0:
-                    print 'Saving model at iteration', iteration
+                    print('Saving model at iteration', iteration)
                     torch.save(model, os.path.join(opt['log.exp_dir'], 'model_{}.pt'.format(iteration)))
 
                 if opt['data.cuda']:
@@ -404,16 +404,16 @@ def main(opt):
         # Log
 
         if iteration % 10 == 0:
-            print 'Iteration', iteration
+            print('Iteration', iteration)
             if opt['train_loss'] == 'evalonly':
-                print '*'*32
-                print 'Full summary. Iteration {}'.format(iteration)
-                print '*'*32
+                print('*'*32)
+                print('Full summary. Iteration {}'.format(iteration))
+                print('*'*32)
                 summary.print_full_summary()
             else:
-                print '!'*32
-                print 'Running averages. Iteration {}'.format(iteration)
-                print '!'*32
+                print('!'*32)
+                print('Running averages. Iteration {}'.format(iteration))
+                print('!'*32)
                 if opt['hide_test']:
                     summary.print_summary(exclude='test/')
                 else:
@@ -429,4 +429,4 @@ def main(opt):
                     fp.write('Iteration {}/{}\n'.format(iteration, opt['iterations']))
                     fp.write(summary.get_full_summary())
             except Exception as e:
-                print 'Could not dump log file! Ignoring for now', e
+                print('Could not dump log file! Ignoring for now', e)
