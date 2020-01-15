@@ -10,6 +10,7 @@ from . import wasserstein
 from protonets.models.vgg import VGGS
 
 from .utils import euclidean_dist
+import math
 
 class Flatten(nn.Module):
     def __init__(self):
@@ -17,6 +18,8 @@ class Flatten(nn.Module):
 
     def forward(self, x):
         return x.view(x.size(0), -1)
+
+bce = torch.nn.BCELoss()
 
 class Protonet(nn.Module):
     def __init__(self, encoder):
@@ -151,21 +154,8 @@ class Protonet(nn.Module):
         p = softmax_log_p_y_query.exp().view(n_class * n_query, n_class)
         pair_pred = (p[:, None, :] * p[None, :, :]).sum(-1).flatten()
 
-        bce = torch.nn.BCELoss()
+
         pairwise_loss_supervised = bce(pair_pred, pair_gt.float())
-
-        ############ Unsupervised Pairwise Losses #######################
-        # Project
-        if 'metric_q' in embedded_sample:
-            # This approach seems to rigid,
-            # rather we should
-            metric_q = embedded_sample['metric_q'].view(n_class*n_query, -1)
-            logits = -((metric_q[:, None, :] - metric_q[None, :, :]) ** 2).sum(-1).flatten()
-            unsup_pair_pred = logits.exp()
-
-            pairwise_loss_unsupervised = bce(unsup_pair_pred, pair_gt.float())
-
-            task_info = pairwise_loss_unsupervised - pairwise_loss_supervised
 
 
         return {
@@ -176,8 +166,6 @@ class Protonet(nn.Module):
             'SupervisedLoss_sinkhorn': sinkhorn_supervised_loss,
             'SupervisedLoss_twostep': two_step_softmax_supervised_loss,
             'PairwiseLoss_supervised': pairwise_loss_supervised,
-            'PairwiseLoss_unsupervised': pairwise_loss_unsupervised,
-            'TaskInfo': task_info,
             'ClassVariance': class_variance
         }
 
@@ -395,6 +383,7 @@ class PairwiseNet(ClusterNet):
         ClusterNet.__init__(self, encoder)
         self.metric = metric
 
+    '''
     def embed(self, sample, raw_input=False):
 
         embedded_sample = ClusterNet.embed(self, sample, raw_input)
@@ -403,7 +392,96 @@ class PairwiseNet(ClusterNet):
         embedded_sample['metric_q'] = self.metric(embedded_sample['zq'])
 
         return embedded_sample
+    '''
 
+    def supervised_loss(self, embedded_sample, regularization):
+
+        # Prepare data
+        z_support = embedded_sample['zs'] # support
+        z_query = embedded_sample['zq'] # query
+
+        n_class = z_support.size(0)
+        assert z_query.size(0) == n_class, 'need same number of classes'
+        n_support = z_support.size(1)
+        n_query = z_query.size(1)
+        z_dim = z_support.size(-1)
+
+        info = ClusterNet.supervised_loss(self, embedded_sample, regularization)
+        targets = torch.arange(n_class, device=z_support.device)[:, None].expand(n_class, n_query).flatten()
+        pair_gt = (targets[:, None] == targets[None, :]).flatten().float()
+        pairwise_loss_supervised = info['PairwiseLoss_supervised']
+        ############ Unsupervised Pairwise Losses #######################
+
+        query_flat = z_query.view(n_class*n_query, z_dim)
+        unsup_pair_pred = self.metric.predict_pairwise(query_flat, query_flat)
+        pairwise_loss_unsupervised = bce(unsup_pair_pred, pair_gt.float())
+        task_info = pairwise_loss_unsupervised - pairwise_loss_supervised
+
+        info['PairwiseLoss_unsupervised'] = pairwise_loss_unsupervised
+        info['TaskInfo'] = task_info
+        info['TaskInfoBits'] = task_info / math.log(2)
+
+        return info
+
+
+class Metric(nn.Module):
+    def __init__(self):
+        nn.Module.__init__(self)
+
+    def predict_pairwise(self, x, y):
+        '''
+
+        :param x: (batch, dim)
+        :param y: (batch, dim)
+        :return:
+        '''
+        raise Exception('Not implemented')
+
+
+class CatMetric(Metric):
+    def __init__(self, z_dim):
+        Metric.__init__(self)
+
+        self.z_dim = z_dim
+        self.catproj = nn.Linear(2*z_dim, 1)
+        self.scaler = nn.Linear(1, 1)
+
+    def predict_pairwise(self, x, y):
+        assert len(x.size()) == 2
+        assert len(y.size()) == 2
+        assert x.size(1) == y.size(1)
+        x = x[:, None, :].expand(len(x), len(y), x.size(1))
+        y = y[None, :, :].expand(len(x), len(y), y.size(1))
+        concat = torch.cat((x, y), -1)
+
+        output = self.catproj(concat)
+        output = self.scaler(output)  # for fast rescaling of probabilities
+        output = F.sigmoid(output)
+        output = output.view(len(x), len(y))
+
+        return output
+
+
+class MahalanobisMetric(Metric):
+    def __init__(self, z_dim):
+        Metric.__init__(self)
+
+        self.z_dim = z_dim
+        self.proj = nn.Linear(z_dim, z_dim)
+        self.scaler = nn.Parameter(torch.FloatTensor([0.]))
+
+    def predict_pairwise(self, x, y):
+        assert len(x.size()) == 2
+        assert len(y.size()) == 2
+
+        x_proj = self.proj(x)
+        y_proj = self.proj(y)
+
+        logits = -((x_proj[:, None, :] - y_proj[None, :, :]) ** 2).sum(-1)
+        logits = logits * self.scaler.exp()
+        unsup_pair_pred = logits.exp()
+
+        return unsup_pair_pred
 
 
 @register_model('pairwise_conv')
@@ -430,7 +508,9 @@ def load_protonet_conv(**kwargs):
 
     print('WARNING z_dim must be CHANGED to actual dimension !')
     print('Should we initialize to identity ?')
-    metric = nn.Linear(z_dim, z_dim)
+
+    #metric = CatMetric(z_dim)
+    metric = MahalanobisMetric(z_dim)
 
     return PairwiseNet(encoder, metric)
 

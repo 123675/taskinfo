@@ -38,7 +38,7 @@ class Summary(object):
             sorted_logs[log] = list(sorted(self.logs[log].items()))
         return sorted_logs
 
-    def print_summary(self, n_avg=50, exclude=None):
+    def print_summary(self, n_avg=10, exclude=None):
         sorted_logs = self.sorted()
         print 'Summary'
         for log in sorted_logs:
@@ -309,6 +309,7 @@ def main(opt):
         summary.log(iteration, 'train/PairwiseLoss_supervised', train_supervised_info['PairwiseLoss_supervised'].item())
         summary.log(iteration, 'train/PairwiseLoss_unsupervised', train_supervised_info['PairwiseLoss_unsupervised'].item())
         summary.log(iteration, 'train/TaskInfo', train_supervised_info['TaskInfo'].item())
+        summary.log(iteration, 'train/TaskInfoBits', train_supervised_info['TaskInfoBits'].item())
 
         summary.log(iteration, 'train/_TimeLoad', train_load_timer.interval)
         summary.log(iteration, 'train/_TimeBackprop', train_backprop_timer.interval)
@@ -370,6 +371,7 @@ def main(opt):
                 summary.log(iteration, '{}/PairwiseLoss_supervised'.format(subset), val_supervised_info['PairwiseLoss_supervised'].item())
                 summary.log(iteration, '{}/PairwiseLoss_unsupervised'.format(subset), val_supervised_info['PairwiseLoss_unsupervised'].item())
                 summary.log(iteration, '{}/TaskInfo'.format(subset), val_supervised_info['TaskInfo'].item())
+                summary.log(iteration, '{}/TaskInfoBits'.format(subset), val_supervised_info['TaskInfoBits'].item())
 
                 summary.log(iteration, '{}/_TimeLoad'.format(subset), val_load_timer.interval)
                 summary.log(iteration, '{}/_TimeEval'.format(subset), val_eval_timer.interval)
@@ -412,7 +414,6 @@ def main(opt):
                 print '!'*32
                 print 'Running averages. Iteration {}'.format(iteration)
                 print '!'*32
-                summary.print_full_summary()
                 if opt['hide_test']:
                     summary.print_summary(exclude='test/')
                 else:
