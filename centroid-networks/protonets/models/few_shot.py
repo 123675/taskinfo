@@ -145,6 +145,29 @@ class Protonet(nn.Module):
         _, two_step_softmax_y_hat_query = two_step_softmax_log_p_y_query.max(2)
         two_step_softmax_supervised_accuracy = torch.eq(two_step_softmax_y_hat_query, target_inds_query.squeeze()).float().mean()
 
+        ############ Supervised Pairwise Losses #######################
+        targets = torch.arange(n_class, device=z_support.device)[:, None].expand(n_class, n_query).flatten()
+        pair_gt = (targets[:, None] == targets[None, :]).flatten().float()
+        p = softmax_log_p_y_query.exp().view(n_class * n_query, n_class)
+        pair_pred = (p[:, None, :] * p[None, :, :]).sum(-1).flatten()
+
+        bce = torch.nn.BCELoss()
+        pairwise_loss_supervised = bce(pair_pred, pair_gt.float())
+
+        ############ Unsupervised Pairwise Losses #######################
+        # Project
+        if 'metric_q' in embedded_sample:
+            # This approach seems to rigid,
+            # rather we should
+            metric_q = embedded_sample['metric_q'].view(n_class*n_query, -1)
+            logits = -((metric_q[:, None, :] - metric_q[None, :, :]) ** 2).sum(-1).flatten()
+            unsup_pair_pred = logits.exp()
+
+            pairwise_loss_unsupervised = bce(unsup_pair_pred, pair_gt.float())
+
+            task_info = pairwise_loss_unsupervised - pairwise_loss_supervised
+
+
         return {
             'SupervisedAcc_softmax': softmax_supervised_accuracy,
             'SupervisedAcc_sinkhorn': sinkhorn_supervised_accuracy,
@@ -152,6 +175,9 @@ class Protonet(nn.Module):
             'SupervisedLoss_softmax': softmax_supervised_loss,
             'SupervisedLoss_sinkhorn': sinkhorn_supervised_loss,
             'SupervisedLoss_twostep': two_step_softmax_supervised_loss,
+            'PairwiseLoss_supervised': pairwise_loss_supervised,
+            'PairwiseLoss_unsupervised': pairwise_loss_unsupervised,
+            'TaskInfo': task_info,
             'ClassVariance': class_variance
         }
 
@@ -182,7 +208,6 @@ def load_protonet_conv(**kwargs):
     return Protonet(encoder)
 
 
-get_nll = nn.NLLLoss()
 
 
 class ClusterNet(Protonet):
@@ -339,6 +364,7 @@ class ClusterNet(Protonet):
         }
 
 
+
 @register_model('clusternet_conv')
 def load_clusternet_conv(**kwargs):
     x_dim = kwargs['x_dim']
@@ -362,6 +388,56 @@ def load_clusternet_conv(**kwargs):
     )
 
     return ClusterNet(encoder)
+
+
+class PairwiseNet(ClusterNet):
+    def __init__(self, encoder, metric):
+        ClusterNet.__init__(self, encoder)
+        self.metric = metric
+
+    def embed(self, sample, raw_input=False):
+
+        embedded_sample = ClusterNet.embed(self, sample, raw_input)
+
+        embedded_sample['metric_s'] = self.metric(embedded_sample['zs'])
+        embedded_sample['metric_q'] = self.metric(embedded_sample['zq'])
+
+        return embedded_sample
+
+
+
+@register_model('pairwise_conv')
+def load_protonet_conv(**kwargs):
+    x_dim = kwargs['x_dim']
+    hid_dim = kwargs['hid_dim']
+    z_dim = kwargs['z_dim']
+
+    def conv_block(in_channels, out_channels):
+        return nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
+
+    encoder = nn.Sequential(
+        conv_block(x_dim[0], hid_dim),
+        conv_block(hid_dim, hid_dim),
+        conv_block(hid_dim, hid_dim),
+        conv_block(hid_dim, z_dim),
+        Flatten()
+    )
+
+    print('WARNING z_dim must be CHANGED to actual dimension !')
+    print('Should we initialize to identity ?')
+    metric = nn.Linear(z_dim, z_dim)
+
+    return PairwiseNet(encoder, metric)
+
+
+
+
+get_nll = nn.NLLLoss()
 
 
 # Load architecture used in the CCN paper

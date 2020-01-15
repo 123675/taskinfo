@@ -257,6 +257,10 @@ def main(opt):
 
             if opt['train_loss'] == 'softmax':  # softmax
                 total_loss = train_supervised_info['SupervisedLoss_softmax']
+            elif opt['train_loss'] == 'pairwisecombined':
+                total_loss = train_supervised_info['PairwiseLoss_unsupervised'] + train_supervised_info['PairwiseLoss_supervised']
+            elif opt['train_loss'] == 'pairwiseunsupervised':
+                total_loss = train_supervised_info['PairwiseLoss_unsupervised']
             elif opt['train_loss'] == 'sinkhorn':
                 total_loss = train_supervised_info['SupervisedLoss_sinkhorn']
             elif opt['train_loss'] == 'twostep':
@@ -300,6 +304,11 @@ def main(opt):
         summary.log(iteration, 'train/SupportClusteringLoss_sinkhorn', train_clustering_info['SupportClusteringLoss_sinkhorn'].item())
         summary.log(iteration, 'train/QueryClusteringLoss_softmax', train_clustering_info['QueryClusteringLoss_softmax'].item())
         summary.log(iteration, 'train/QueryClusteringLoss_sinkhorn', train_clustering_info['QueryClusteringLoss_sinkhorn'].item())
+
+        # pairwise losses
+        summary.log(iteration, 'train/PairwiseLoss_supervised', train_supervised_info['PairwiseLoss_supervised'].item())
+        summary.log(iteration, 'train/PairwiseLoss_unsupervised', train_supervised_info['PairwiseLoss_unsupervised'].item())
+        summary.log(iteration, 'train/TaskInfo', train_supervised_info['TaskInfo'].item())
 
         summary.log(iteration, 'train/_TimeLoad', train_load_timer.interval)
         summary.log(iteration, 'train/_TimeBackprop', train_backprop_timer.interval)
@@ -356,6 +365,11 @@ def main(opt):
                 summary.log(iteration, '{}/SupportClusteringLoss_sinkhorn'.format(subset), val_clustering_info['SupportClusteringLoss_sinkhorn'].item())
                 summary.log(iteration, '{}/QueryClusteringLoss_softmax'.format(subset), val_clustering_info['QueryClusteringLoss_softmax'].item())
                 summary.log(iteration, '{}/QueryClusteringLoss_sinkhorn'.format(subset), val_clustering_info['QueryClusteringLoss_sinkhorn'].item())
+
+                # pairwise
+                summary.log(iteration, '{}/PairwiseLoss_supervised'.format(subset), val_supervised_info['PairwiseLoss_supervised'].item())
+                summary.log(iteration, '{}/PairwiseLoss_unsupervised'.format(subset), val_supervised_info['PairwiseLoss_unsupervised'].item())
+                summary.log(iteration, '{}/TaskInfo'.format(subset), val_supervised_info['TaskInfo'].item())
 
                 summary.log(iteration, '{}/_TimeLoad'.format(subset), val_load_timer.interval)
                 summary.log(iteration, '{}/_TimeEval'.format(subset), val_eval_timer.interval)
