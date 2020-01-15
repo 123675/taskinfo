@@ -217,7 +217,7 @@ def main(opt):
     softmax_regularization = 1. / opt['temperature']
     sinkhorn_regularizations = [float(x) for x in opt['regularizations'].split(',')]
     print('Sinkhorn regularizations will take parameters', sinkhorn_regularizations)
-    for iteration in xrange(opt['iterations']):
+    for iteration in range(opt['iterations']):
 
         # Sample from training
         with Timer() as train_load_timer:
