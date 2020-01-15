@@ -40,13 +40,13 @@ class Summary(object):
 
     def print_summary(self, n_avg=10, exclude=None):
         sorted_logs = self.sorted()
-        print 'Summary'
+        print('Summary')
         for log in sorted_logs:
             tail = sorted_logs[log]
             tail = tail[-min(len(tail), n_avg):]
             val = dict(tail).values()
             if (exclude is None or exclude not in log) and '_reg' not in log:
-                print '\t{}: {:.4f} +/- {:.4f}'.format(log, np.mean(val), np.std(val))
+                print('\t{}: {:.4f} +/- {:.4f}'.format(log, np.mean(val), np.std(val)))
 
     def get_full_summary(self, exclude=None):
         lines = []
@@ -64,7 +64,7 @@ class Summary(object):
 
     def print_full_summary(self, exclude=None):
         s = self.get_full_summary(exclude)
-        print s
+        print(s)
         return s
 
 
@@ -192,11 +192,11 @@ def main(opt):
     model = model_utils.load(opt)
 
     if opt['checkpoint']:
-        print 'Loading from checkpoint', opt['checkpoint']
+        print('Loading from checkpoint', opt['checkpoint'])
         model = torch.load(opt['checkpoint'])
 
     if opt['checkpoint_state']:
-        print 'Loading state from checkpoint', opt['checkpoint_state']
+        print('Loading state from checkpoint', opt['checkpoint_state'])
         model.load_state_dict(torch.load(opt['checkpoint_state'], map_location=lambda storage, loc: storage))
 
     if opt['data.cuda']:
@@ -216,7 +216,7 @@ def main(opt):
     #### Start of training loop
     softmax_regularization = 1. / opt['temperature']
     sinkhorn_regularizations = [float(x) for x in opt['regularizations'].split(',')]
-    print 'Sinkhorn regularizations will take parameters', sinkhorn_regularizations
+    print('Sinkhorn regularizations will take parameters', sinkhorn_regularizations)
     for iteration in xrange(opt['iterations']):
 
         # Sample from training
@@ -235,11 +235,11 @@ def main(opt):
             embedding_train = model.embed(sample_train, raw_input=opt['rawinput'])
 
             if iteration == 0:
-                print 'Debug: Tensor sizes'
-                print 'xs', sample_train['xs'].size()
-                print 'xq', sample_train['xq'].size()
-                print 'zs', embedding_train['zs'].size()
-                print 'zq', embedding_train['zq'].size()
+                print( 'Debug: Tensor sizes')
+                print( 'xs', sample_train['xs'].size())
+                print( 'xq', sample_train['xq'].size())
+                print( 'zs', embedding_train['zs'].size())
+                print( 'zq', embedding_train['zq'].size())
                 # Should be 64 for omniglot and 1600 for miniimagenet
             del sample_train  # save memory
 
@@ -378,7 +378,7 @@ def main(opt):
 
         # End of epoch? -> schedule new learning rate
         if new_epoch and iteration>0:
-            print 'End of epoch, scheduling new learning rate'
+            print('End of epoch, scheduling new learning rate')
             scheduler.step()
 
             summary.log(iteration, 'other/_LR', scheduler.get_lr())
@@ -387,9 +387,9 @@ def main(opt):
         if iteration % 200 == 0:
 
             if opt['rawinput'] or opt['train_loss'] == 'evalonly':
-                print 'No model to save in raw_input mode'
+                print('No model to save in raw_input mode')
             else:
-                print 'Saving current model'
+                print 'Saving current model')
                 model.cpu()
 
                 torch.save(model, os.path.join(opt['log.exp_dir'], 'current_model.pt'))

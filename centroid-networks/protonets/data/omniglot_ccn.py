@@ -65,7 +65,7 @@ class OmniglotCCNLoader(object):
     def get_alphabet_images(self, alphabet):
 
         if alphabet not in alphabet_images_cache:
-            print 'Split {} -> Loading alphabet {} for the first time'.format(self.split, alphabet)
+            print('Split {} -> Loading alphabet {} for the first time'.format(self.split, alphabet))
             # Return all its characters in a tensor
             alphabet_images = []
             for character in self.character_indices[alphabet]:
