@@ -306,6 +306,8 @@ def main(opt):
         summary.log(iteration, 'train/QueryClusteringLoss_sinkhorn', train_clustering_info['QueryClusteringLoss_sinkhorn'].item())
 
         # pairwise losses
+        summary.log(iteration, 'train/PairwiseAcc_supervised', train_supervised_info['PairwiseAcc_supervised'].item())
+        summary.log(iteration, 'train/PairwiseAcc_unsupervised', train_supervised_info['PairwiseAcc_unsupervised'].item())
         summary.log(iteration, 'train/PairwiseLoss_supervised', train_supervised_info['PairwiseLoss_supervised'].item())
         summary.log(iteration, 'train/PairwiseLoss_unsupervised', train_supervised_info['PairwiseLoss_unsupervised'].item())
         summary.log(iteration, 'train/TaskInfo', train_supervised_info['TaskInfo'].item())
@@ -368,6 +370,8 @@ def main(opt):
                 summary.log(iteration, '{}/QueryClusteringLoss_sinkhorn'.format(subset), val_clustering_info['QueryClusteringLoss_sinkhorn'].item())
 
                 # pairwise
+                summary.log(iteration, '{}/PairwiseAcc_supervised'.format(subset), val_supervised_info['PairwiseAcc_supervised'].item())
+                summary.log(iteration, '{}/PairwiseAcc_unsupervised'.format(subset), val_supervised_info['PairwiseAcc_unsupervised'].item())
                 summary.log(iteration, '{}/PairwiseLoss_supervised'.format(subset), val_supervised_info['PairwiseLoss_supervised'].item())
                 summary.log(iteration, '{}/PairwiseLoss_unsupervised'.format(subset), val_supervised_info['PairwiseLoss_unsupervised'].item())
                 summary.log(iteration, '{}/TaskInfo'.format(subset), val_supervised_info['TaskInfo'].item())

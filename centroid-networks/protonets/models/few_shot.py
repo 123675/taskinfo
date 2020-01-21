@@ -150,13 +150,12 @@ class Protonet(nn.Module):
 
         ############ Supervised Pairwise Losses #######################
         targets = torch.arange(n_class, device=z_support.device)[:, None].expand(n_class, n_query).flatten()
-        pair_gt = (targets[:, None] == targets[None, :]).flatten().float()
+        pair_gt = (targets[:, None] == targets[None, :]).flatten()
         p = softmax_log_p_y_query.exp().view(n_class * n_query, n_class)
         pair_pred = (p[:, None, :] * p[None, :, :]).sum(-1).flatten()
 
-
         pairwise_loss_supervised = bce(pair_pred, pair_gt.float())
-
+        pairwise_accuracy_supervised = ((pair_pred > 0.5) == pair_gt).float().mean()
 
         return {
             'SupervisedAcc_softmax': softmax_supervised_accuracy,
@@ -166,6 +165,7 @@ class Protonet(nn.Module):
             'SupervisedLoss_sinkhorn': sinkhorn_supervised_loss,
             'SupervisedLoss_twostep': two_step_softmax_supervised_loss,
             'PairwiseLoss_supervised': pairwise_loss_supervised,
+            'PairwiseAcc_supervised': pairwise_accuracy_supervised,
             'ClassVariance': class_variance
         }
 
@@ -408,15 +408,18 @@ class PairwiseNet(ClusterNet):
 
         info = ClusterNet.supervised_loss(self, embedded_sample, regularization)
         targets = torch.arange(n_class, device=z_support.device)[:, None].expand(n_class, n_query).flatten()
-        pair_gt = (targets[:, None] == targets[None, :]).flatten().float()
+        pair_gt = (targets[:, None] == targets[None, :]).flatten()
         pairwise_loss_supervised = info['PairwiseLoss_supervised']
         ############ Unsupervised Pairwise Losses #######################
 
         query_flat = z_query.view(n_class*n_query, z_dim)
-        unsup_pair_pred = self.metric.predict_pairwise(query_flat, query_flat)
+        unsup_pair_pred = self.metric.predict_pairwise(query_flat, query_flat).flatten()
         pairwise_loss_unsupervised = bce(unsup_pair_pred, pair_gt.float())
         task_info = pairwise_loss_unsupervised - pairwise_loss_supervised
 
+        pairwise_accuracy_unsupervised = ((unsup_pair_pred > 0.5) == pair_gt).float().mean()
+
+        info['PairwiseAcc_unsupervised'] = pairwise_accuracy_unsupervised
         info['PairwiseLoss_unsupervised'] = pairwise_loss_unsupervised
         info['TaskInfo'] = task_info
         info['TaskInfoBits'] = task_info / math.log(2)
