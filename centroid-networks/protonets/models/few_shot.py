@@ -487,19 +487,20 @@ class MahalanobisMetric(Metric):
         return unsup_pair_pred
 
 
+def conv_block(in_channels, out_channels):
+    return nn.Sequential(
+        nn.Conv2d(in_channels, out_channels, 3, padding=1),
+        nn.BatchNorm2d(out_channels),
+        nn.ReLU(),
+        nn.MaxPool2d(2)
+    )
+
+
 @register_model('pairwise_conv')
 def load_protonet_conv(**kwargs):
     x_dim = kwargs['x_dim']
     hid_dim = kwargs['hid_dim']
     z_dim = kwargs['z_dim']
-
-    def conv_block(in_channels, out_channels):
-        return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(),
-            nn.MaxPool2d(2)
-        )
 
     encoder = nn.Sequential(
         conv_block(x_dim[0], hid_dim),
@@ -509,13 +510,19 @@ def load_protonet_conv(**kwargs):
         Flatten()
     )
 
-    print('WARNING z_dim must be CHANGED to actual dimension !')
-    print('Should we initialize to identity ?')
+    # get output shape
+    fake_input = torch.zeros((1, x_dim[0], x_dim[1], x_dim[2]))
+    fake_output = encoder(fake_input)
+    output_dim = fake_output.size(1)
 
-    #metric = CatMetric(z_dim)
-    metric = MahalanobisMetric(z_dim)
+    metric = MahalanobisMetric(output_dim)
+
+    print(kwargs)
+    print('Output dim {}'.format(output_dim))
 
     return PairwiseNet(encoder, metric)
+
+
 
 
 
