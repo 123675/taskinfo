@@ -197,7 +197,12 @@ def main(opt):
 
     if opt['checkpoint_state']:
         print('Loading state from checkpoint', opt['checkpoint_state'])
-        model.load_state_dict(torch.load(opt['checkpoint_state'], map_location=lambda storage, loc: storage))
+        # this code works when additional parameters are available
+        random_state = model.state_dict()
+        checkpoint_state = torch.load(opt['checkpoint_state'], map_location=lambda storage, loc: storage)
+        random_state.update(checkpoint_state)
+        model.load_state_dict(random_state)
+        # model.load_state_dict(torch.load(opt['checkpoint_state'], map_location=lambda storage, loc: storage))
 
     if opt['data.cuda']:
         model.cuda()
