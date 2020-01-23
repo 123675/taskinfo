@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from collections import OrderedDict
 
 from torch.autograd import Variable
 
@@ -157,17 +158,17 @@ class Protonet(nn.Module):
         pairwise_loss_supervised = bce(pair_pred, pair_gt.float())
         pairwise_accuracy_supervised = ((pair_pred > 0.5) == pair_gt).float().mean()
 
-        return {
-            'SupervisedAcc_softmax': softmax_supervised_accuracy,
-            'SupervisedAcc_sinkhorn': sinkhorn_supervised_accuracy,
-            'SupervisedAcc_twostep': two_step_softmax_supervised_accuracy,
-            'SupervisedLoss_softmax': softmax_supervised_loss,
-            'SupervisedLoss_sinkhorn': sinkhorn_supervised_loss,
-            'SupervisedLoss_twostep': two_step_softmax_supervised_loss,
-            'PairwiseLoss_supervised': pairwise_loss_supervised,
-            'PairwiseAcc_supervised': pairwise_accuracy_supervised,
-            'ClassVariance': class_variance
-        }
+        return OrderedDict((
+                               ('SupervisedAcc_softmax', softmax_supervised_accuracy),
+                               ('SupervisedAcc_sinkhorn', sinkhorn_supervised_accuracy),
+                               ('SupervisedAcc_twostep', two_step_softmax_supervised_accuracy),
+                               ('SupervisedLoss_softmax', softmax_supervised_loss),
+                               ('SupervisedLoss_sinkhorn', sinkhorn_supervised_loss),
+                               ('SupervisedLoss_twostep', two_step_softmax_supervised_loss),
+                               ('PairwiseLoss_supervised', pairwise_loss_supervised),
+                               ('PairwiseAcc_supervised', pairwise_accuracy_supervised),
+                               ('ClassVariance', class_variance)
+                           ))
 
 
 
@@ -339,17 +340,17 @@ class ClusterNet(Protonet):
             all_support_losses[conditional_mode] = get_nll(support_permuted_log_p_y, target_inds_support)
             all_query_losses[conditional_mode] = get_nll(query_permuted_log_p_y, target_inds_query)
 
-        return {
-            'SupportClusteringAcc_softmax': all_support_clustering_accuracy['softmax'],
-            'SupportClusteringAcc_sinkhorn': all_support_clustering_accuracy['sinkhorn'],
-            'QueryClusteringAcc_softmax': all_query_clustering_accuracy['softmax'],
-            'QueryClusteringAcc_sinkhorn': all_query_clustering_accuracy['sinkhorn'],
+        return OrderedDict((
+                               ('SupportClusteringAcc_softmax', all_support_clustering_accuracy['softmax']),
+                                ('SupportClusteringAcc_sinkhorn', all_support_clustering_accuracy['sinkhorn']),
+                                 ('QueryClusteringAcc_softmax', all_query_clustering_accuracy['softmax']),
+                                  ('QueryClusteringAcc_sinkhorn', all_query_clustering_accuracy['sinkhorn']),
              # New end-to-end losses
-            'SupportClusteringLoss_softmax': all_support_losses['softmax'],
-            'SupportClusteringLoss_sinkhorn': all_support_losses['sinkhorn'],
-            'QueryClusteringLoss_softmax': all_query_losses['softmax'],
-            'QueryClusteringLoss_sinkhorn': all_query_losses['sinkhorn']
-        }
+            #'SupportClusteringLoss_softmax': all_support_losses['softmax'],
+            #'SupportClusteringLoss_sinkhorn': all_support_losses['sinkhorn'],
+            #'QueryClusteringLoss_softmax': all_query_losses['softmax'],
+            #'QueryClusteringLoss_sinkhorn': all_query_losses['sinkhorn']
+                           ))
 
 
 

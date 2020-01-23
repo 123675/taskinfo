@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import io
 from collections import OrderedDict
 
 import numpy as np
@@ -29,8 +30,14 @@ class Summary(object):
         self.logs = OrderedDict()
 
     def log(self, epoch, name, value):
+        if isinstance(value, torch.Tensor):
+            value = value.item()
         self.logs.setdefault(name, {})
         self.logs[name][epoch] = value
+
+    def log_dict(self, epoch, format_str, dic):
+        for key, val in dic.items():
+            self.log(epoch, format_str.format(key), val)
 
     def sorted(self):
         sorted_logs = OrderedDict()
@@ -39,8 +46,8 @@ class Summary(object):
         return sorted_logs
 
     def print_summary(self, n_avg=10, exclude=None):
-        sorted_logs = self.sorted()
         print('Summary')
+        sorted_logs = self.sorted()
         for log in sorted_logs:
             tail = sorted_logs[log]
             tail = tail[-min(len(tail), n_avg):]
@@ -249,10 +256,7 @@ def main(opt):
                 gamma = 1. / skr
                 train_clustering_info = model.clustering_loss(embedding_train, regularization=gamma, clustering_type=opt['clustering'], sanity_check=opt['sanity_check'])
                 # unsupervised losses
-                summary.log(iteration, 'train/SupportClusteringAcc_softmax_reg{}'.format(skr), train_clustering_info['SupportClusteringAcc_softmax'])
-                summary.log(iteration, 'train/SupportClusteringAcc_sinkhorn_reg{}'.format(skr), train_clustering_info['SupportClusteringAcc_sinkhorn'])
-                summary.log(iteration, 'train/QueryClusteringAcc_softmax_reg{}'.format(skr), train_clustering_info['QueryClusteringAcc_softmax'])
-                summary.log(iteration, 'train/QueryClusteringAcc_sinkhorn_reg{}'.format(skr), train_clustering_info['QueryClusteringAcc_sinkhorn'])
+                summary.log_dict(iteration, 'train/{{}}_reg{}'.format(skr), train_clustering_info)
 
 
             if opt['train_loss'] == 'softmax':  # softmax
@@ -285,34 +289,9 @@ def main(opt):
                 total_loss.backward()
                 optimizer.step()
 
-        # supervised losses
-        summary.log(iteration, 'train/SupervisedAcc_softmax', train_supervised_info['SupervisedAcc_softmax'].item())
-        summary.log(iteration, 'train/SupervisedAcc_sinkhorn', train_supervised_info['SupervisedAcc_sinkhorn'].item())
-        summary.log(iteration, 'train/SupervisedAcc_twostep', train_supervised_info['SupervisedAcc_twostep'].item())
-        summary.log(iteration, 'train/SupervisedLoss_softmax', train_supervised_info['SupervisedLoss_softmax'].item())
-        summary.log(iteration, 'train/SupervisedLoss_sinkhorn', train_supervised_info['SupervisedLoss_sinkhorn'].item())
-        summary.log(iteration, 'train/SupervisedLoss_twostep', train_supervised_info['SupervisedLoss_twostep'].item())
-
-        # unsupervised losses
-        summary.log(iteration, 'train/SupportClusteringAcc_softmax', train_clustering_info['SupportClusteringAcc_softmax'])
-        summary.log(iteration, 'train/SupportClusteringAcc_sinkhorn', train_clustering_info['SupportClusteringAcc_sinkhorn'])
-        summary.log(iteration, 'train/QueryClusteringAcc_softmax', train_clustering_info['QueryClusteringAcc_softmax'])
-        summary.log(iteration, 'train/QueryClusteringAcc_sinkhorn', train_clustering_info['QueryClusteringAcc_sinkhorn'])
-
-        # end to end losses
-        summary.log(iteration, 'train/SupportClusteringLoss_softmax', train_clustering_info['SupportClusteringLoss_softmax'].item())
-        summary.log(iteration, 'train/SupportClusteringLoss_sinkhorn', train_clustering_info['SupportClusteringLoss_sinkhorn'].item())
-        summary.log(iteration, 'train/QueryClusteringLoss_softmax', train_clustering_info['QueryClusteringLoss_softmax'].item())
-        summary.log(iteration, 'train/QueryClusteringLoss_sinkhorn', train_clustering_info['QueryClusteringLoss_sinkhorn'].item())
-
-        # pairwise losses
-        summary.log(iteration, 'train/PairwiseAcc_supervised', train_supervised_info['PairwiseAcc_supervised'].item())
-        summary.log(iteration, 'train/PairwiseAcc_unsupervised', train_supervised_info['PairwiseAcc_unsupervised'].item())
-        summary.log(iteration, 'train/PairwiseLoss_supervised', train_supervised_info['PairwiseLoss_supervised'].item())
-        summary.log(iteration, 'train/PairwiseLoss_unsupervised', train_supervised_info['PairwiseLoss_unsupervised'].item())
-        summary.log(iteration, 'train/TaskInfo', train_supervised_info['TaskInfo'].item())
-        summary.log(iteration, 'train/TaskInfoBits', train_supervised_info['TaskInfoBits'].item())
-
+        # log
+        summary.log_dict(iteration, 'train/{}', train_supervised_info)
+        summary.log_dict(iteration, 'train/{}', train_clustering_info)
         summary.log(iteration, 'train/_TimeLoad', train_load_timer.interval)
         summary.log(iteration, 'train/_TimeBackprop', train_backprop_timer.interval)
         summary.log(iteration, 'train/TotalLoss', total_loss.item())  # Supervised accuracy
@@ -343,40 +322,11 @@ def main(opt):
                         val_clustering_info = model.clustering_loss(embedding_val, regularization=gamma, clustering_type=opt['clustering'], sanity_check=opt['sanity_check'])
 
                         # log unsupervised losses
-                        summary.log(iteration, '{}/SupportClusteringAcc_softmax_reg{}'.format(subset, skr), val_clustering_info['SupportClusteringAcc_softmax'])
-                        summary.log(iteration, '{}/SupportClusteringAcc_sinkhorn_reg{}'.format(subset, skr), val_clustering_info['SupportClusteringAcc_sinkhorn'])
-                        summary.log(iteration, '{}/QueryClusteringAcc_softmax_reg{}'.format(subset, skr), val_clustering_info['QueryClusteringAcc_softmax'])
-                        summary.log(iteration, '{}/QueryClusteringAcc_sinkhorn_reg{}'.format(subset, skr), val_clustering_info['QueryClusteringAcc_sinkhorn'])
+                        summary.log_dict(iteration, '{}/{{}}_reg{}'.format(subset, skr), train_clustering_info)
 
-
-                # supervised losses
-                summary.log(iteration, '{}/SupervisedAcc_softmax'.format(subset), val_supervised_info['SupervisedAcc_softmax'].item())
-                summary.log(iteration, '{}/SupervisedAcc_sinkhorn'.format(subset), val_supervised_info['SupervisedAcc_sinkhorn'].item())
-                summary.log(iteration, '{}/SupervisedAcc_twostep'.format(subset), val_supervised_info['SupervisedAcc_twostep'].item())
-                summary.log(iteration, '{}/SupervisedLoss_softmax'.format(subset), val_supervised_info['SupervisedLoss_softmax'].item())
-                summary.log(iteration, '{}/SupervisedLoss_sinkhorn'.format(subset), val_supervised_info['SupervisedLoss_sinkhorn'].item())
-                summary.log(iteration, '{}/SupervisedLoss_twostep'.format(subset), val_supervised_info['SupervisedLoss_twostep'].item())
-
-                # unsupervised losses
-                summary.log(iteration, '{}/SupportClusteringAcc_softmax'.format(subset), val_clustering_info['SupportClusteringAcc_softmax'])
-                summary.log(iteration, '{}/SupportClusteringAcc_sinkhorn'.format(subset), val_clustering_info['SupportClusteringAcc_sinkhorn'])
-                summary.log(iteration, '{}/QueryClusteringAcc_softmax'.format(subset), val_clustering_info['QueryClusteringAcc_softmax'])
-                summary.log(iteration, '{}/QueryClusteringAcc_sinkhorn'.format(subset), val_clustering_info['QueryClusteringAcc_sinkhorn'])
-
-                # end-to-end losses
-                summary.log(iteration, '{}/SupportClusteringLoss_softmax'.format(subset), val_clustering_info['SupportClusteringLoss_softmax'].item())
-                summary.log(iteration, '{}/SupportClusteringLoss_sinkhorn'.format(subset), val_clustering_info['SupportClusteringLoss_sinkhorn'].item())
-                summary.log(iteration, '{}/QueryClusteringLoss_softmax'.format(subset), val_clustering_info['QueryClusteringLoss_softmax'].item())
-                summary.log(iteration, '{}/QueryClusteringLoss_sinkhorn'.format(subset), val_clustering_info['QueryClusteringLoss_sinkhorn'].item())
-
-                # pairwise
-                summary.log(iteration, '{}/PairwiseAcc_supervised'.format(subset), val_supervised_info['PairwiseAcc_supervised'].item())
-                summary.log(iteration, '{}/PairwiseAcc_unsupervised'.format(subset), val_supervised_info['PairwiseAcc_unsupervised'].item())
-                summary.log(iteration, '{}/PairwiseLoss_supervised'.format(subset), val_supervised_info['PairwiseLoss_supervised'].item())
-                summary.log(iteration, '{}/PairwiseLoss_unsupervised'.format(subset), val_supervised_info['PairwiseLoss_unsupervised'].item())
-                summary.log(iteration, '{}/TaskInfo'.format(subset), val_supervised_info['TaskInfo'].item())
-                summary.log(iteration, '{}/TaskInfoBits'.format(subset), val_supervised_info['TaskInfoBits'].item())
-
+                # log
+                summary.log_dict(iteration, '{}/{{}}'.format(subset), val_supervised_info)
+                summary.log_dict(iteration, '{}/{{}}'.format(subset), val_clustering_info)
                 summary.log(iteration, '{}/_TimeLoad'.format(subset), val_load_timer.interval)
                 summary.log(iteration, '{}/_TimeEval'.format(subset), val_eval_timer.interval)
 
@@ -426,7 +376,8 @@ def main(opt):
         #### Save log
         if iteration % 500 == 0 or iteration < 10 or (iteration % 100 == 0 and opt['train_loss'] == 'evalonly'):
             try:
-                with open(os.path.join(opt['log.exp_dir'], 'log.json'), 'w', encoding="utf8") as fp:
+                # breaks with python 2
+                with io.open(os.path.join(opt['log.exp_dir'], 'log.json'), 'w', encoding="utf8") as fp:
                     json.dump(summary.logs, fp)
                 # Dumpy full summary as well, although this mostly makes sense in evalonly mode
                 with open(os.path.join(opt['log.exp_dir'], 'summary.txt'), 'w') as fp:
