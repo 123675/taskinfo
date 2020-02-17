@@ -21,6 +21,7 @@ class Flatten(nn.Module):
         return x.view(x.size(0), -1)
 
 bce = torch.nn.BCELoss()
+bce_elem = torch.nn.BCELoss(reduction='none')
 
 class Protonet(nn.Module):
     def __init__(self, encoder):
@@ -158,6 +159,11 @@ class Protonet(nn.Module):
         pairwise_loss_supervised = bce(pair_pred, pair_gt.float())
         pairwise_accuracy_supervised = ((pair_pred > 0.5) == pair_gt).float().mean()
 
+        pos = pair_gt.float().mean()
+        weights = pair_gt.float() * 0.5 / pos + (1 - pair_gt.float()) * 0.5 / (1 - pos)
+        adjusted_loss_supervised = (bce_elem(pair_pred, pair_gt.float()) * weights).mean()
+        adjusted_accuracy_supervised = (((pair_pred > 0.5) == pair_gt).float() * weights).mean()
+
         return OrderedDict((
                                ('SupervisedAcc_softmax', softmax_supervised_accuracy),
                                ('SupervisedAcc_sinkhorn', sinkhorn_supervised_accuracy),
@@ -167,6 +173,8 @@ class Protonet(nn.Module):
                                ('SupervisedLoss_twostep', two_step_softmax_supervised_loss),
                                ('PairwiseLoss_supervised', pairwise_loss_supervised),
                                ('PairwiseAcc_supervised', pairwise_accuracy_supervised),
+                               ('AdjustedLoss_supervised', adjusted_loss_supervised),
+                               ('AdjustedAcc_supervised', adjusted_accuracy_supervised),
                                ('ClassVariance', class_variance)
                            ))
 
@@ -416,12 +424,21 @@ class PairwiseNet(ClusterNet):
         query_flat = z_query.view(n_class*n_query, z_dim)
         unsup_pair_pred = self.metric.predict_pairwise(query_flat, query_flat).flatten()
         pairwise_loss_unsupervised = bce(unsup_pair_pred, pair_gt.float())
+
+        pos = pair_gt.float().mean()
+        weights = pair_gt.float() * 0.5 / pos + (1 - pair_gt.float()) * 0.5 / (1 - pos)
+        adjusted_loss_unsupervised = (bce_elem(unsup_pair_pred, pair_gt.float()) * weights).mean()
+        adjusted_accuracy_unsupervised = (((unsup_pair_pred > 0.5) == pair_gt).float() * weights).mean()
+
         task_info = pairwise_loss_unsupervised - pairwise_loss_supervised
+        adjusted_task_info = adjusted_loss_unsupervised - info['AdjustedLoss_supervised']
 
         pairwise_accuracy_unsupervised = ((unsup_pair_pred > 0.5) == pair_gt).float().mean()
 
         info['PairwiseAcc_unsupervised'] = pairwise_accuracy_unsupervised
         info['PairwiseLoss_unsupervised'] = pairwise_loss_unsupervised
+        info['AdjustedAcc_unsupervised'] = adjusted_accuracy_unsupervised
+        info['AdjustedLoss_unsupervised'] = adjusted_loss_unsupervised
         info['TaskInfo'] = task_info
         info['TaskInfoBits'] = task_info / math.log(2)
 

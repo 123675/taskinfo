@@ -270,6 +270,10 @@ def main(opt):
                 total_loss = train_supervised_info['PairwiseLoss_unsupervised'] + train_supervised_info['PairwiseLoss_supervised']
             elif opt['train_loss'] == 'pairwiseunsupervised':
                 total_loss = train_supervised_info['PairwiseLoss_unsupervised']
+            elif opt['train_loss'] == 'adjustedunsupervised':
+                total_loss = train_supervised_info['AdjustedLoss_unsupervised']
+            elif opt['train_loss'] == 'adjustedsupervised':
+                total_loss = train_supervised_info['AdjustedLoss_supervised']
             elif opt['train_loss'] == 'sinkhorn':
                 total_loss = train_supervised_info['SupervisedLoss_sinkhorn']
             elif opt['train_loss'] == 'twostep':
