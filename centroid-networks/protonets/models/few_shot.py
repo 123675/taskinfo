@@ -152,17 +152,31 @@ class Protonet(nn.Module):
 
         ############ Supervised Pairwise Losses #######################
         targets = torch.arange(n_class, device=z_support.device)[:, None].expand(n_class, n_query).flatten()
-        pair_gt = (targets[:, None] == targets[None, :]).flatten()
+        pair_gt_mask = (targets[:, None] == targets[None, :]).flatten()
+        pair_gt = pair_gt_mask.float()
+
         p = softmax_log_p_y_query.exp().view(n_class * n_query, n_class)
         pair_pred = (p[:, None, :] * p[None, :, :]).sum(-1).flatten()
 
-        pairwise_loss_supervised = bce(pair_pred, pair_gt.float())
-        pairwise_accuracy_supervised = ((pair_pred > 0.5) == pair_gt).float().mean()
+        pairwise_loss_supervised = bce(pair_pred, pair_gt)
+        pairwise_accuracy_supervised = ((pair_pred > 0.5) == pair_gt_mask).float().mean()
 
-        pos = pair_gt.float().mean()
-        weights = pair_gt.float() * 0.5 / pos + (1 - pair_gt.float()) * 0.5 / (1 - pos)
-        adjusted_loss_supervised = (bce_elem(pair_pred, pair_gt.float()) * weights).mean()
-        adjusted_accuracy_supervised = (((pair_pred > 0.5) == pair_gt).float() * weights).mean()
+        # adjusted pair pred needs to be reweighted
+        adjusted_joint_ = (torch.eye(n_class) + (1. - torch.eye(n_class)) / (n_class - 1) )[None, None, :, :] * p[:, None, :, None] * p[None, :, None, :]
+        Z = adjusted_joint_.sum(2, keepdim=True).sum(3, keepdim=True)
+        adjusted_joint = adjusted_joint_ / Z  # warning, this might possibly cause division by 0
+        adjusted_pair_pred = adjusted_joint.diagonal(dim1=-2, dim2=-1).sum(-1)
+
+
+        pos = pair_gt.mean()
+        # reweight data distribution
+        weights = pair_gt * 0.5 / pos + (1 - pair_gt) * 0.5 / (1 - pos)
+
+        #bad adjusted_loss_supervised = (bce_elem(pair_pred, pair_gt) * weights).mean()
+        #bad accuracy = (((pair_pred > 0.5) == pair_gt_mask).float() * weights).mean()
+
+        adjusted_loss_supervised = (bce_elem(adjusted_pair_pred.flatten(), pair_gt) * weights).mean()
+        adjusted_accuracy_supervised = (((adjusted_pair_pred.flatten() > 0.5) == pair_gt_mask).float() * weights).mean()
 
         return OrderedDict((
                                ('SupervisedAcc_softmax', softmax_supervised_accuracy),
@@ -175,6 +189,7 @@ class Protonet(nn.Module):
                                ('PairwiseAcc_supervised', pairwise_accuracy_supervised),
                                ('AdjustedLoss_supervised', adjusted_loss_supervised),
                                ('AdjustedAcc_supervised', adjusted_accuracy_supervised),
+                               ('BAD ! AdjustedAcc_supervised', (((pair_pred > 0.5) == pair_gt_mask).float() * weights).mean()),
                                ('ClassVariance', class_variance)
                            ))
 
