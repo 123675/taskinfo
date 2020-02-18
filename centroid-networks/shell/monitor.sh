@@ -7,7 +7,7 @@ echo "Monitoring $FOLDER"
 echo "Refreshed $(( (a-b) / (60))) minutes ago"
 date -r $FOLDER/summary.txt
 cat $FOLDER/summary.txt|grep "$SPLIT/SupervisedAcc_softmax"
-cat $FOLDER/summary.txt|grep "$SPLIT/AdjustedAcc_unsupervised"
+cat $FOLDER/summary.txt|grep "$SPLIT/AdjustedAcc_supervised"
 cat $FOLDER/summary.txt|grep "$SPLIT/AdjustedAcc_unsupervised"
 cat $FOLDER/summary.txt|grep "$SPLIT/AdjustedAcc_supervised"
 cat $FOLDER/summary.txt|grep "$SPLIT/AdjustedLoss_unsupervised"
