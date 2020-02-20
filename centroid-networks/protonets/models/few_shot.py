@@ -162,7 +162,7 @@ class Protonet(nn.Module):
         pairwise_accuracy_supervised = ((pair_pred > 0.5) == pair_gt_mask).float().mean()
 
         # adjusted pair pred needs to be reweighted
-        adjusted_joint_ = (torch.eye(n_class) + (1. - torch.eye(n_class)) / (n_class - 1) )[None, None, :, :] * p[:, None, :, None] * p[None, :, None, :]
+        adjusted_joint_ = (torch.eye(n_class, device=p.device) + (1. - torch.eye(n_class, device=p.device)) / (n_class - 1) )[None, None, :, :] * p[:, None, :, None] * p[None, :, None, :]
         Z = adjusted_joint_.sum(2, keepdim=True).sum(3, keepdim=True)
         adjusted_joint = adjusted_joint_ / Z  # warning, this might possibly cause division by 0
         adjusted_pair_pred = adjusted_joint.diagonal(dim1=-2, dim2=-1).sum(-1)
