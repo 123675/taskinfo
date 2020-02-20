@@ -10,8 +10,9 @@ if [[ "$MODE" != "train" && "$MODE" != "eval" ]]; then echo "mode must be train 
 if [[ "$MODE" == "eval" ]]; then ACTUALTRAINLOSS="evalonly"; else ACTUALTRAINLOSS="$TRAINLOSS"; fi
 
 PATH_TO_PRETRAINED="$HOME/code/cyvius96/save/proto-5/epoch-last.pth"
-if [ -z ${RELOAD+x} ]; then echo "please specify reload 1 or 0"; exit; fi
-if [ -n ${RELOAD} ]; then RELOAD_CMD="--checkpoint-state ${PATH_TO_PRETRAINED}"; fi
+echo "RELOAD $RELOAD"
+if [[ "$RELOAD" != "0" && "$RELOAD" != "1" ]]; then echo "please specify reload 1 or 0"; exit; fi
+if [ ${RELOAD} == "1" ]; then RELOAD_CMD="--checkpoint-state ${PATH_TO_PRETRAINED}"; else RELOAD_CMD=""; fi
 
 # Replace this accordingly
 echo "CUDA visible devices $CUDA_VISIBLE_DEVICES"
