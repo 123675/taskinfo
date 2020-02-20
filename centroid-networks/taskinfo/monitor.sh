@@ -6,7 +6,10 @@ MODE=${3:-adjusted}
 if [ "$MODE" != "adjusted" ] && [ "$MODE" != "pairwise" ]; then echo "MODE must be adjusted or pairwise"; exit 1; fi
 
 echo "~"
-echo "    < $FOLDER >    "
+echo "    < Folder: $FOLDER >    "
+
+cat $FOLDER/summary.txt
+
 ((a = `date +%s`))
 ((b = `date -r $FOLDER/summary.txt +%s`))
 echo "(refreshed $(( (a-b) / (60))) minutes ago)"
