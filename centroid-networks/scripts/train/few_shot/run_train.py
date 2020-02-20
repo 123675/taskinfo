@@ -100,6 +100,7 @@ if args['train_loss'] == 'evalonly':
     # Take best model in folder
     if not args['checkpoint'] and not args['checkpoint_state'] and not args['rawinput']:
         args['checkpoint'] = '{}/current_model.pt'.format(model_dir)
+    print('Reloading checkpoint {} for evaluation.'.format(args['checkpoint']))
 
     assert (args['checkpoint'] or args['checkpoint_state']) or args['rawinput'], 'Really? Evaluate untrained model?'
 
